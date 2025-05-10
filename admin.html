@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin - Publicar Conteúdo</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: #ffd700;
+      margin-bottom: 20px;
+    }
+
+    .admin-container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .admin-section {
+      background-color: #1c1c1c;
+      border: 1px solid #c8102e;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+
+    .admin-section h2 {
+      color: #ffd700;
+      margin-bottom: 15px;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #c8102e;
+      border-radius: 5px;
+      background-color: #222;
+      color: #fff;
+    }
+
+    .input-field[type="file"] {
+      cursor: pointer;
+    }
+
+    .admin-button {
+      background-color: #c8102e;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .admin-button:hover {
+      background-color: #a50d22;
+    }
+
+    .success {
+      color: #0f0;
+      margin-top: 10px;
+    }
+
+    .error {
+      color: #f00;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">Painel Administrativo</div>
+  </header>
+
+  <main class="admin-container">
+    <!-- Seção para Publicar Mestre -->
+    <section class="admin-section">
+      <h2>Publicar Mestre</h2>
+      <input type="text" id="nome" class="input-field" placeholder="Nome do Mestre">
+      <input type="text" id="descricaoMestre" class="input-field" placeholder="Descrição">
+      <input type="file" id="imagemMestre" class="input-field" accept="image/*">
+      <button id="publicarMestre" class="admin-button">Publicar</button>
+      <p id="mensagemMestre"></p>
+    </section>
+
+    <!-- Seção para Publicar Notícia -->
+    <section class="admin-section">
+      <h2>Publicar Notícia</h2>
+      <input type="text" id="tituloPostagem" class="input-field" placeholder="Título da Notícia">
+      <textarea id="descricaoPostagem" class="input-field" placeholder="Descrição"></textarea>
+      <input type="text" id="nomeMestrePostagem" class="input-field" placeholder="Nome do Mestre">
+      <input type="file" id="imagemPostagem" class="input-field" accept="image/*,video/*">
+      <button id="publicarPostagem" class="admin-button">Publicar</button>
+      <p id="mensagemPostagem"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBH4H4diwR4NCC0CD3dqMP4Z_9k1KF4wHA",
+      authDomain: "kinggingadeouro.firebaseapp.com",
+      projectId: "kinggingadeouro",
+      storageBucket: "kinggingadeouro.appspot.com",
+      messagingSenderId: "929326953726",
+      appId: "1:929326953726:web:a020006b955cb36137e1af"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Elementos
+    const publicarMestreBtn = document.getElementById("publicarMestre");
+    const mensagemMestre = document.getElementById("mensagemMestre");
+    const publicarPostagemBtn = document.getElementById("publicarPostagem");
+    const mensagemPostagem = document.getElementById("mensagemPostagem");
+
+    // Função para publicar o Mestre
+    publicarMestreBtn.addEventListener("click", async () => {
+      const nome = document.getElementById("nome").value.trim();
+      const descricao = document.getElementById("descricaoMestre").value.trim();
+      const imagemFile = document.getElementById("imagemMestre").files[0];
+
+      if (nome && descricao && imagemFile) {
+        const reader = new FileReader();
+        reader.onloadend = async function () {
+          const imagemBase64 = reader.result;  // A imagem em Base64
+          await addDoc(collection(db, "mestres"), {
+            nome,
+            descricao,
+            imagem: imagemBase64,
+            data: new Date()
+          });
+          mensagemMestre.textContent = "Mestre publicado com sucesso!";
+          mensagemMestre.className = "success";
+        };
+        reader.readAsDataURL(imagemFile);
+      } else {
+        mensagemMestre.textContent = "Preencha todos os campos.";
+        mensagemMestre.className = "error";
+      }
+    });
+
+    // Função para publicar a Notícia
+    publicarPostagemBtn.addEventListener("click", async () => {
+      const titulo = document.getElementById("tituloPostagem").value.trim();
+      const descricao = document.getElementById("descricaoPostagem").value.trim();
+      const mestre = document.getElementById("nomeMestrePostagem").value.trim();
+      const arquivo = document.getElementById("imagemPostagem").files[0];
+
+      if (titulo && descricao && mestre && arquivo) {
+        const reader = new FileReader();
+        reader.onloadend = async function () {
+          const arquivoBase64 = reader.result;  // O arquivo (imagem ou vídeo) em Base64
+          await addDoc(collection(db, "publicacoes"), {
+            titulo,
+            descricao,
+            mestre,
+            midia: arquivoBase64,
+            tipo: arquivo.type.startsWith("video/") ? "video" : "imagem",
+            data: new Date()
+          });
+          mensagemPostagem.textContent = "Notícia publicada com sucesso!";
+          mensagemPostagem.className = "success";
+        };
+        reader.readAsDataURL(arquivo);
+      } else {
+        mensagemPostagem.textContent = "Preencha todos os campos obrigatórios.";
+        mensagemPostagem.className = "error";
+      }
+    });
+  </script>
+</body>
+</html>
