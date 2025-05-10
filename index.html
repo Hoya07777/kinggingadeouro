@@ -75,6 +75,27 @@
       color: #f00;
       margin-top: 10px;
     }
+
+    .publicacoes-container, .mestres-container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: #1c1c1c;
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid #c8102e;
+    }
+
+    .publicacoes-container h2, .mestres-container h2 {
+      color: #ffd700;
+    }
+
+    .item {
+      margin-bottom: 20px;
+    }
+
+    .item hr {
+      border-color: #333;
+    }
   </style>
 </head>
 <body>
@@ -83,7 +104,6 @@
   </header>
 
   <main class="admin-container">
-    <!-- Seção para Publicar Mestre -->
     <section class="admin-section">
       <h2>Publicar Mestre</h2>
       <input type="text" id="nome" class="input-field" placeholder="Nome do Mestre">
@@ -93,7 +113,6 @@
       <p id="mensagemMestre"></p>
     </section>
 
-    <!-- Seção para Publicar Notícia -->
     <section class="admin-section">
       <h2>Publicar Notícia</h2>
       <input type="text" id="tituloPostagem" class="input-field" placeholder="Título da Notícia">
@@ -105,9 +124,19 @@
     </section>
   </main>
 
+  <div class="mestres-container" id="mestresContainer"></div>
+  <div class="publicacoes-container" id="publicacoesContainer"></div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      deleteDoc,
+      doc
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBH4H4diwR4NCC0CD3dqMP4Z_9k1KF4wHA",
@@ -121,13 +150,15 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Elementos
     const publicarMestreBtn = document.getElementById("publicarMestre");
     const mensagemMestre = document.getElementById("mensagemMestre");
     const publicarPostagemBtn = document.getElementById("publicarPostagem");
     const mensagemPostagem = document.getElementById("mensagemPostagem");
 
-    // Função para publicar o Mestre
+    const mestresContainer = document.getElementById("mestresContainer");
+    const publicacoesContainer = document.getElementById("publicacoesContainer");
+
+    // PUBLICAR MESTRE
     publicarMestreBtn.addEventListener("click", async () => {
       const nome = document.getElementById("nome").value.trim();
       const descricao = document.getElementById("descricaoMestre").value.trim();
@@ -136,7 +167,7 @@
       if (nome && descricao && imagemFile) {
         const reader = new FileReader();
         reader.onloadend = async function () {
-          const imagemBase64 = reader.result;  // A imagem em Base64
+          const imagemBase64 = reader.result;
           await addDoc(collection(db, "mestres"), {
             nome,
             descricao,
@@ -145,6 +176,7 @@
           });
           mensagemMestre.textContent = "Mestre publicado com sucesso!";
           mensagemMestre.className = "success";
+          listarMestres();
         };
         reader.readAsDataURL(imagemFile);
       } else {
@@ -153,7 +185,7 @@
       }
     });
 
-    // Função para publicar a Notícia
+    // PUBLICAR NOTÍCIA
     publicarPostagemBtn.addEventListener("click", async () => {
       const titulo = document.getElementById("tituloPostagem").value.trim();
       const descricao = document.getElementById("descricaoPostagem").value.trim();
@@ -163,7 +195,7 @@
       if (titulo && descricao && mestre && arquivo) {
         const reader = new FileReader();
         reader.onloadend = async function () {
-          const arquivoBase64 = reader.result;  // O arquivo (imagem ou vídeo) em Base64
+          const arquivoBase64 = reader.result;
           await addDoc(collection(db, "publicacoes"), {
             titulo,
             descricao,
@@ -174,6 +206,7 @@
           });
           mensagemPostagem.textContent = "Notícia publicada com sucesso!";
           mensagemPostagem.className = "success";
+          listarPublicacoes();
         };
         reader.readAsDataURL(arquivo);
       } else {
@@ -181,6 +214,59 @@
         mensagemPostagem.className = "error";
       }
     });
+
+    // LISTAR MESTRES
+    async function listarMestres() {
+      mestresContainer.innerHTML = "<h2>Mestres Publicados</h2>";
+      const snapshot = await getDocs(collection(db, "mestres"));
+      snapshot.forEach(docSnap => {
+        const mestre = docSnap.data();
+        const div = document.createElement("div");
+        div.classList.add("item");
+        div.innerHTML = `
+          <p><strong>${mestre.nome}</strong></p>
+          <p>${mestre.descricao}</p>
+          <button class="admin-button" data-id="${docSnap.id}" data-colecao="mestres">Excluir</button>
+          <hr>
+        `;
+        mestresContainer.appendChild(div);
+      });
+    }
+
+    // LISTAR PUBLICAÇÕES
+    async function listarPublicacoes() {
+      publicacoesContainer.innerHTML = "<h2>Notícias Publicadas</h2>";
+      const snapshot = await getDocs(collection(db, "publicacoes"));
+      snapshot.forEach(docSnap => {
+        const pub = docSnap.data();
+        const div = document.createElement("div");
+        div.classList.add("item");
+        div.innerHTML = `
+          <p><strong>${pub.titulo}</strong> - ${pub.mestre}</p>
+          <p>${pub.descricao}</p>
+          <button class="admin-button" data-id="${docSnap.id}" data-colecao="publicacoes">Excluir</button>
+          <hr>
+        `;
+        publicacoesContainer.appendChild(div);
+      });
+    }
+
+    // EXCLUIR ITEM
+    document.body.addEventListener("click", async (e) => {
+      if (e.target.tagName === "BUTTON" && e.target.dataset.id) {
+        const id = e.target.dataset.id;
+        const colecao = e.target.dataset.colecao;
+        if (confirm("Tem certeza que deseja excluir?")) {
+          await deleteDoc(doc(db, colecao, id));
+          if (colecao === "mestres") listarMestres();
+          else if (colecao === "publicacoes") listarPublicacoes();
+        }
+      }
+    });
+
+    // Carregar listas ao abrir
+    listarMestres();
+    listarPublicacoes();
   </script>
 </body>
 </html>
